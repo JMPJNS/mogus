@@ -1,12 +1,18 @@
 {
 	"version": "0.2.0",
 	"configurations": [
-        {
-            "name": "HashLink",
-            "request": "launch",
-            "type": "hl",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "haxe: compile.hxml"
-        }
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "debug",
+			"preLaunchTask": "rust: cargo build",
+			"program": "target/debug/mogus",
+			"cwd": "${workspaceFolder}",
+			"args": [],
+			"env": {
+				"CARGO_MANIFEST_DIR": "."
+			}
+		}
+        
 	]
 }
