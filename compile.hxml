@@ -1,0 +1,8 @@
+-cp src
+-lib heaps
+-lib hlsdl
+-lib ldtk-haxe-api
+-lib deepnightLibs
+-hl mogus.hl
+-D resourcesPath=assets
+-main Main
