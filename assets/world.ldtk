@@ -90,7 +90,7 @@
 		}
 	], "entities": [
 		{
-			"identifier": "Player_Start_Position",
+			"identifier": "Player",
 			"uid": 6,
 			"tags": [],
 			"width": 24,
@@ -117,7 +117,7 @@
 			"pivotY": 0,
 			"fieldDefs": [
 				{
-					"identifier": "Health",
+					"identifier": "health",
 					"__type": "Float",
 					"uid": 7,
 					"type": "F_Float",
@@ -127,7 +127,7 @@
 					"arrayMaxLength": null,
 					"editorDisplayMode": "NameAndValue",
 					"editorDisplayPos": "Above",
-					"editorAlwaysShow": false,
+					"editorAlwaysShow": true,
 					"editorCutLongValues": true,
 					"editorTextSuffix": null,
 					"editorTextPrefix": null,
@@ -240,7 +240,7 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Player_Start_Position",
+							"__identifier": "Player",
 							"__grid": [1,7],
 							"__pivot": [0,0],
 							"__tags": [],
@@ -251,7 +251,7 @@
 							"height": 24,
 							"defUid": 6,
 							"px": [16,112],
-							"fieldInstances": [{ "__identifier": "Health", "__value": 40, "__type": "Float", "__tile": null, "defUid": 7, "realEditorValues": [] }]
+							"fieldInstances": [{ "__identifier": "health", "__value": 40, "__type": "Float", "__tile": null, "defUid": 7, "realEditorValues": [{ "id": "V_Float", "params": [40] }] }]
 						}
 					]
 				},
