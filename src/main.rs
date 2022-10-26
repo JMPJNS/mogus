@@ -1,3 +1,4 @@
+use bevy::ecs::query::QuerySingleError;
 use bevy::prelude::*;
 use bevy::{asset::AssetServerSettings, render::texture::ImageSettings};
 use bevy_ecs_ldtk::prelude::*;
@@ -32,9 +33,8 @@ fn main() {
         .register_ldtk_entity::<PlayerBundle>("Player")
         .add_plugin(InputManagerPlugin::<Action>::default())
         .add_startup_system(startup)
-        .add_startup_system(spawn_player)
+        .add_system(init_player)
         .add_system(jump)
-        .add_system(print_health)
         .add_plugin(WorldInspectorPlugin::new())
         .run();
 }
@@ -64,6 +64,7 @@ pub struct PlayerBundle {
     health: HealthValue,
     #[from_entity_instance]
     entity_instance: EntityInstance,
+    player: Player,
 }
 
 #[derive(Default, Reflect, Component, Clone, Debug)]
@@ -97,30 +98,25 @@ enum Action {
     Jump,
 }
 
-// TODO: figure out how to combine this player and the one from ldtk
-fn spawn_player(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert(Player)
-        .insert_bundle(InputManagerBundle::<Action> {
-            // Stores "which actions are currently pressed"
-            action_state: ActionState::default(),
-            // Describes how to convert from player inputs into those actions
-            input_map: InputMap::new([(KeyCode::Space, Action::Jump)]),
-        });
+fn init_player(mut commands: Commands, query: Query<Entity, Added<Player>>) {
+    if let Ok(entity) = query.get_single() {
+        commands
+            .entity(entity)
+            .insert(Player)
+            .insert_bundle(InputManagerBundle::<Action> {
+                // Stores "which actions are currently pressed"
+                action_state: ActionState::default(),
+                // Describes how to convert from player inputs into those actions
+                input_map: InputMap::new([(KeyCode::Space, Action::Jump)]),
+            });
+    }
 }
 
 // Query for the `ActionState` component in your game logic systems!
 fn jump(query: Query<&ActionState<Action>, With<Player>>) {
-    let action_state = query.single();
-    // Each action has a button-like state of its own that you can check
-    if action_state.just_pressed(Action::Jump) {
-        println!("I'm jumping!");
-    }
-}
-
-fn print_health(query: Query<&HealthValue>) {
-    for e in query.iter() {
-        println!("{:?}", e)
+    if let Ok(action_state) = query.get_single() {
+        if action_state.just_pressed(Action::Jump) {
+            println!("I'm jumping!");
+        }
     }
 }
