@@ -53,6 +53,7 @@ fn main() {
         .add_system(init_player)
         .add_system(jump)
         .add_system(move_player)
+        .add_system(set_current_level)
         .add_system(camera_fit_inside_current_level)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
@@ -61,7 +62,9 @@ fn main() {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Reflect, Default, Component)]
-pub struct Player;
+pub struct Player {
+    pub current_level: usize,
+}
 
 #[derive(Clone, Default, Bundle, LdtkEntity)]
 pub struct PlayerBundle {
@@ -294,7 +297,7 @@ fn init_player(mut commands: Commands, query: Query<Entity, Added<Player>>) {
     if let Ok(entity) = query.get_single() {
         commands
             .entity(entity)
-            .insert(Player)
+            .insert(Player { current_level: 0 })
             .insert(RigidBody::Dynamic)
             .insert(Collider::cuboid(12.0, 12.0))
             .insert_bundle(InputManagerBundle::<Action> {
@@ -328,16 +331,46 @@ fn jump(mut query: Query<(&ActionState<Action>, &mut Velocity), With<Player>>) {
 fn move_player(mut query: Query<(&ActionState<Action>, &mut Velocity), With<Player>>) {
     if let Ok((action_state, mut velocity)) = query.get_single_mut() {
         if action_state.pressed(Action::Right) {
-            velocity.linvel = Vec2::new(32.0, velocity.linvel.y);
+            velocity.linvel = Vec2::new(50.0, velocity.linvel.y);
         }
 
         if action_state.pressed(Action::Left) {
-            velocity.linvel = Vec2::new(-32.0, velocity.linvel.y);
+            velocity.linvel = Vec2::new(-50.0, velocity.linvel.y);
         }
     }
 }
 
 const ASPECT_RATIO: f32 = 16. / 9.;
+
+pub fn set_current_level(
+    mut commands: Commands,
+    mut player_query: Query<(&Transform, &mut Player)>,
+    level_query: Query<&Handle<LdtkLevel>, (Without<OrthographicProjection>, Without<Player>)>,
+    ldtk_levels: Res<Assets<LdtkLevel>>,
+    level_selection: Res<LevelSelection>,
+) {
+    if let Ok((player_transform, mut player)) = player_query.get_single_mut() {
+        for level_handle in level_query.iter() {
+            if let Some(ldtk_level) = ldtk_levels.get(level_handle) {
+                let level = &ldtk_level.level;
+
+                // check in which level player is
+                if (player_transform.translation.x >= level.world_x as f32
+                    && player_transform.translation.x <= (level.world_x + level.px_wid) as f32)
+                    && (player_transform.translation.y >= level.world_y as f32
+                        && player_transform.translation.y <= (level.world_y + level.px_hei) as f32)
+                {
+                    player.current_level = level.uid.try_into().unwrap_or(0);
+                }
+                let new_level = LevelSelection::Uid(player.current_level as i32);
+                if level_selection.ne(&new_level) {
+                    println!("switching to level {:?}", level.identifier);
+                    commands.insert_resource(new_level);
+                }
+            }
+        }
+    }
+}
 
 pub fn camera_fit_inside_current_level(
     mut camera_query: Query<
@@ -347,7 +380,7 @@ pub fn camera_fit_inside_current_level(
         ),
         Without<Player>,
     >,
-    player_query: Query<&Transform, With<Player>>,
+    mut player_query: Query<(&Transform, &mut Player)>,
     level_query: Query<
         (&Transform, &Handle<LdtkLevel>),
         (Without<OrthographicProjection>, Without<Player>),
@@ -355,20 +388,14 @@ pub fn camera_fit_inside_current_level(
     level_selection: Res<LevelSelection>,
     ldtk_levels: Res<Assets<LdtkLevel>>,
 ) {
-    if let Ok(Transform {
-        translation: player_translation,
-        ..
-    }) = player_query.get_single()
-    {
-        let player_translation = *player_translation;
-
+    if let Ok((player_transform, mut player)) = player_query.get_single_mut() {
         let (mut orthographic_projection, mut camera_transform) = camera_query.single_mut();
-
         for (level_transform, level_handle) in level_query.iter() {
             if let Some(ldtk_level) = ldtk_levels.get(level_handle) {
                 let level = &ldtk_level.level;
-                if level_selection.is_match(&0, level) {
-                    let level_ratio = level.px_wid as f32 / ldtk_level.level.px_hei as f32;
+
+                if level_selection.is_match(&player.current_level, level) {
+                    let level_ratio = level.px_wid as f32 / level.px_hei as f32;
 
                     orthographic_projection.scaling_mode = bevy::render::camera::ScalingMode::None;
                     orthographic_projection.bottom = 0.;
@@ -377,7 +404,7 @@ pub fn camera_fit_inside_current_level(
                         // level is wider than the screen
                         orthographic_projection.top = (level.px_hei as f32 / 9.).round() * 9.;
                         orthographic_projection.right = orthographic_projection.top * ASPECT_RATIO;
-                        camera_transform.translation.x = (player_translation.x
+                        camera_transform.translation.x = (player_transform.translation.x
                             - level_transform.translation.x
                             - orthographic_projection.right / 2.)
                             .clamp(0., level.px_wid as f32 - orthographic_projection.right);
@@ -386,7 +413,7 @@ pub fn camera_fit_inside_current_level(
                         // level is taller than the screen
                         orthographic_projection.right = (level.px_wid as f32 / 16.).round() * 16.;
                         orthographic_projection.top = orthographic_projection.right / ASPECT_RATIO;
-                        camera_transform.translation.y = (player_translation.y
+                        camera_transform.translation.y = (player_transform.translation.y
                             - level_transform.translation.y
                             - orthographic_projection.top / 2.)
                             .clamp(0., level.px_hei as f32 - orthographic_projection.top);
